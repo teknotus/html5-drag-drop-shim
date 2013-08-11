@@ -3,14 +3,14 @@ var drag_and_drop = {
   dragging: false,
   nodes: []
 };
-findEventNodes = function(node){
+findElementNodes = function(node){
   var body = document.body;
   var nodes = [];
   while(node != body) {
     nodes.push(node);
     node = node.parentNode;
   }
-  return nodes;
+  return nodes.reverse();
 };
 findDraggableNodes = function(node){
   var draggable = 'dragger';
@@ -105,7 +105,7 @@ touchStartCallback = function(e){
   if(dcount){
     e.preventDefault();
     drag_and_drop.dragging = true;
-    drag_and_drop.nodes = findEventNodes(target);
+    drag_and_drop.nodes = findElementNodes(target);
     var dcopy = cloneWithStyle(dnodes[0]);
     var rect = dnodes[0].getBoundingClientRect();
     var offsetY = clientY - rect.top;
@@ -149,9 +149,29 @@ touchMoveCallback = function(e){
         clientY = e.touches[0].clientY;
       }
     }
-//    var element = document.elementFromPoint(e.clientX,e.clientY);
-//    var same = element == e.target ? "match" : "different";
-//    console.log(same);
+    var element = document.elementFromPoint(clientX,clientY);
+    var dragOverEvent = document.createEvent("Event");
+    dragOverEvent.initEvent("dragover", true, true);
+    dragOverEvent.dataTransfer = {};
+    var dragOverCanceled = !element.dispatchEvent(dragOverEvent);
+
+    var oldNodes = drag_and_drop.nodes;
+    var newNodes = findElementNodes(element);
+    var elCount = (oldNodes.length < newNodes.length) ?
+      oldNodes.length : newNodes.length;
+    var i = 0;
+    for( ; i < elCount && oldNodes[i] === newNodes[i] ; i++){}
+    for(var on = oldNodes.length -1 ; on >= i ; on--){
+      var dragLeaveEvent = document.createEvent("Event");
+      dragLeaveEvent.initEvent("dragleave", true, true);
+      oldNodes[on].dispatchEvent(dragLeaveEvent);
+    }
+    for(var nn = newNodes.length ; i < nn ; i++){
+      var dragEnterEvent = document.createEvent("Event");
+      dragEnterEvent.initEvent("dragenter", true, true);
+      newNodes[i].dispatchEvent(dragEnterEvent);
+    }
+    drag_and_drop.nodes = newNodes;
     var dcopy = drag_and_drop.dcopy;
     var offset = drag_and_drop.offset;
     var copyOrigWidth = drag_and_drop.copyOrigRect.width;

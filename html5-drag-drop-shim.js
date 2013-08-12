@@ -150,9 +150,26 @@ touchStartCallback = function(e){
   }
 }
 touchEndCallback = function(e){
-  console.log("mouseup");
+  console.log("mouseup or touchend");
   drag_and_drop.dragging = false;
   document.body.removeChild(drag_and_drop.dcopy);
+  var dropElement = drag_and_drop.dropElement;
+  if(dropElement !== null){
+    var dropEvent = document.createEvent("Event");
+    dropEvent.initEvent("drop", true, true);
+    dropEvent.dataTransfer = drag_and_drop.dataTransfer;
+    dropEvent.clientX = drag_and_drop.moveData.clientX;
+    dropEvent.clientY = drag_and_drop.moveData.clientY;
+    dropElement.dispatchEvent(dropEvent);
+  } else {
+    console.log('invalid drop target');
+  }
+  var oldNodes = drag_and_drop.nodes;
+  for(var on = oldNodes.length -1 ; on >= 0 ; on--){
+    var dragLeaveEvent = document.createEvent("Event");
+    dragLeaveEvent.initEvent("dragleave", true, true);
+    oldNodes[on].dispatchEvent(dragLeaveEvent);
+  }
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent("dragend", true, true);
   dragEndEvent.screenX = drag_and_drop.moveData.screenX;
@@ -182,10 +199,11 @@ touchMoveCallback = function(e){
     }
     drag_and_drop.moveData = moveData;
     var element = document.elementFromPoint(moveData.clientX,moveData.clientY);
+    drag_and_drop.dropElement = element;
     if(element !== null){
       var dragOverEvent = document.createEvent("Event");
       dragOverEvent.initEvent("dragover", true, true);
-      dragOverEvent.dataTransfer = {};
+      dragOverEvent.dataTransfer = drag_and_drop.dataTransfer;
       var dragOverCanceled = !element.dispatchEvent(dragOverEvent);
     }
     var oldNodes = drag_and_drop.nodes;

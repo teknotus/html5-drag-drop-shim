@@ -133,6 +133,13 @@ DragAndDrop.prototype.DataTransfer.prototype = {
       currentNode = treeWalker.currentNode;
       if(currentNode.nodeType == 1){
         newNode = document.createElement(currentNode.nodeName);
+        if(currentNode.nodeName === 'IMG'){
+          newNode.src = currentNode.src;
+        } else if(currentNode.nodeName === 'CANVAS'){
+          newNode.width = currentNode.width;
+          newNode.height = currentNode.height;
+          newNode.getContext('2d').drawImage(currentNode,0,0);
+        }
         this.copyStyle(currentNode,newNode);
       }else if(currentNode.nodeType == 3){
         newNode = document.createTextNode(currentNode.nodeValue);
@@ -223,19 +230,19 @@ DragAndDrop.prototype.touchStartCallback = function(e){
     var dataTransfer = new this.DataTransfer();
     dragStartEvent.dataTransfer = this.dataTransfer = dataTransfer;
     var dragStartCanceled = !dnodes[0].dispatchEvent(dragStartEvent);
-
-    var rect = dnodes[0].getBoundingClientRect();
-    var offsetY = clientY - rect.top;
-    var offsetX = clientX - rect.left;
-    this.dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
-    this.dcopy = this.dataTransfer.dragImage.clone;
-    this.dataTransfer.setDragImagePos(clientX,clientY);
+    if(typeof dataTransfer.dragImage.clone === 'undefined'){
+      var rect = dnodes[0].getBoundingClientRect();
+      var offsetY = clientY - rect.top;
+      var offsetX = clientX - rect.left;
+      dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
+    }
+    dataTransfer.setDragImagePos(clientX,clientY);
   }
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
   console.log("mouseup or touchend");
   this.dragging = false;
-  document.body.removeChild(this.dcopy);
+  document.body.removeChild(this.dataTransfer.dragImage.clone);
   var dropElement = this.dropElement;
   if(dropElement !== null){
     var dropEvent = document.createEvent("Event");

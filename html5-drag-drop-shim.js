@@ -27,6 +27,7 @@ DataTransfer.prototype = {
   setDragImage: function(image,x,y){
     this.dragImage = {
       image: image,
+      clone: cloneWithStyle(image),
       x: x,
       y: y
     };
@@ -78,13 +79,6 @@ DataTransfer.prototype = {
   }
 };
 
-//DataTransfer.prototype.setData = function(type, value){
-//  this.data[type] = value;
-//  console.log('value of type: ' + type + ' set');
-//};
-//DataTransfer.prototype.getData = function(type){
-//  return this.data[type];
-//};
 var drag_and_drop = {
   dragging: false,
   nodes: [],
@@ -107,6 +101,8 @@ findElementNodes = function(node){
   return nodes.reverse();
 };
 findDraggableNodes = function(node){
+  // could do this with xpath
+  // './/ancestor-or-self::*[@draggable="true"]'
   var draggable = 'dragger';
   var body = document.body;
   var draggable_nodes = [];
@@ -197,12 +193,20 @@ touchStartCallback = function(e){
     drag_and_drop.dragging = true;
     drag_and_drop.dragNode = dnodes[0];
     drag_and_drop.nodes = findElementNodes(target);
-    var dcopy = cloneWithStyle(dnodes[0]);
+
+    var dragStartEvent = document.createEvent("Event");
+    dragStartEvent.initEvent("dragstart", true, true);
+    var dataTransfer = new DataTransfer();
+    dragStartEvent.dataTransfer = drag_and_drop.dataTransfer = dataTransfer;
+    var dragStartCanceled = !dnodes[0].dispatchEvent(dragStartEvent);
+
     var rect = dnodes[0].getBoundingClientRect();
     var offsetY = clientY - rect.top;
     var offsetX = clientX - rect.left;
     drag_and_drop['rect'] = rect;
     drag_and_drop['offset'] = { X: offsetX, Y: offsetY };
+    drag_and_drop.dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
+    var dcopy = drag_and_drop.dataTransfer.dragImage.clone;
     document.body.appendChild(dcopy);
     dcopy.style.position = "absolute";
     dcopy.style['z-index'] = 5000;
@@ -217,10 +221,6 @@ touchStartCallback = function(e){
     var copyOrigRect = dcopy.getBoundingClientRect();
     drag_and_drop['copyOrigRect'] = copyOrigRect;
 
-    var dragStartEvent = document.createEvent("Event");
-    dragStartEvent.initEvent("dragstart", true, true);
-    dragStartEvent.dataTransfer = drag_and_drop.dataTransfer;
-    var dragStartCanceled = !dnodes[0].dispatchEvent(dragStartEvent);
   }
 }
 touchEndCallback = function(e){

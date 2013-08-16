@@ -7,7 +7,7 @@ DragAndDrop.prototype.DataTransfer = function(){
     this.types = [];
     this.data = {};
     this.dragElement;
-    this.dragImage;
+    this.dragImage = {};
     this.dropEffect = 'none';
     this.effectAllowed = 'uninitialized';
     this.effectAllowedMask = 7;
@@ -28,12 +28,39 @@ DragAndDrop.prototype.DataTransfer.prototype = {
     this.dragElement = element;
   },
   setDragImage: function(image,x,y){
+    console.log('setting drag image');
+    if(typeof this.dragImage.clone !== 'undefined'){
+      document.removeChild(this.dragImage.clone);
+    }
+    var clone = this.cloneWithStyle(image);
+    document.body.appendChild(clone);
+    clone.style.position = "absolute";
+    clone.style['z-index'] = 5000;
+    clone.style.top = '0px';
+    clone.style.left = '0px';
+    clone.style.overflow = 'hidden';
+    clone.style['pointer-events'] = 'none';
     this.dragImage = {
       image: image,
-      clone: this.cloneWithStyle(image),
+      clone: clone,
+      cloneOrigRect: clone.getBoundingClientRect(),
       x: x,
       y: y
     };
+  },
+  setDragImagePos: function(clientX,clientY){
+    var cloneOrigWidth = this.dragImage.cloneOrigRect.width;
+    var X = clientX - this.dragImage.x;
+    var Y = clientY - this.dragImage.y;
+    var clone = this.dragImage.clone;
+    // if dragged item extends to right of screen trim it to fit
+    var overflow = (X + cloneOrigWidth) - window.innerWidth;
+    if(overflow > 0){
+      clone.style.width = (cloneOrigWidth - overflow) + 'px';
+    } else {
+      clone.style.width = cloneOrigWidth + 'px';
+    }
+    clone.style['-webkit-transform'] = 'translate(' + X + 'px, ' + Y + 'px)';
   },
   set effectAllowed(value){
     if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
@@ -71,7 +98,7 @@ DragAndDrop.prototype.DataTransfer.prototype = {
       } else if(value === 'link'){
         effect = 4;
       }
-      if(effect & this.effectAllowedMask){
+      if(effect & this.effectAllowedMask){ //bitwise &
         this._dropEffect = value;
       } else {
         this._dropEffect = 'none';
@@ -200,24 +227,9 @@ DragAndDrop.prototype.touchStartCallback = function(e){
     var rect = dnodes[0].getBoundingClientRect();
     var offsetY = clientY - rect.top;
     var offsetX = clientX - rect.left;
-    this['rect'] = rect;
-    this['offset'] = { X: offsetX, Y: offsetY };
     this.dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
-    var dcopy = this.dataTransfer.dragImage.clone;
-    document.body.appendChild(dcopy);
-    dcopy.style.position = "absolute";
-    dcopy.style['z-index'] = 5000;
-    dcopy.style.top = '0px';
-    dcopy.style.left = '0px';
-    dcopy.style.overflow = 'hidden';
-    var X = clientX - offsetX;
-    var Y = clientY - offsetY;
-    dcopy.style['-webkit-transform'] = 'translate(' + X + 'px, ' + Y + 'px)';
-    dcopy.style['pointer-events'] = 'none';
-    this.dcopy = dcopy;
-    var copyOrigRect = dcopy.getBoundingClientRect();
-    this['copyOrigRect'] = copyOrigRect;
-
+    this.dcopy = this.dataTransfer.dragImage.clone;
+    this.dataTransfer.setDragImagePos(clientX,clientY);
   }
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
@@ -299,19 +311,7 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       newNodes[i].dispatchEvent(dragEnterEvent);
     }
     this.nodes = newNodes;
-    var dcopy = this.dcopy;
-    var offset = this.offset;
-    var copyOrigWidth = this.copyOrigRect.width;
-    var X = moveData.clientX - offset.X;
-    var Y = moveData.clientY - offset.Y;
-    // if dragged item extends to right of screen trim it to fit
-    var overflow = (X + copyOrigWidth) - window.innerWidth;
-    if(overflow > 0){
-      dcopy.style.width = (copyOrigWidth - overflow) + 'px';
-    } else {
-      dcopy.style.width = copyOrigWidth + 'px';
-    }
-    dcopy.style['-webkit-transform'] = 'translate(' + X + 'px, ' + Y + 'px)';
+    this.dataTransfer.setDragImagePos(moveData.clientX,moveData.clientY);
   }
 }
 

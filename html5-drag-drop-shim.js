@@ -1,4 +1,15 @@
-var DragAndDrop = function(){
+var DragAndDrop = function(configObject){
+  // set defaults
+  this.config = {
+    dragAttribute: 'draggable',
+    eventPrefix: '',
+    pointerEventsHack: false
+  };
+  for (var key in configObject) {
+    if (configObject.hasOwnProperty(key)) {
+      this.config[key] = configObject[key];
+    }
+  }
   this.dragging = false;
   this.nodes = [];
   this.dataTransfer;
@@ -60,7 +71,12 @@ DragAndDrop.prototype.DataTransfer.prototype = {
     } else {
       clone.style.width = cloneOrigWidth + 'px';
     }
-    clone.style['-webkit-transform'] = 'translate(' + X + 'px, ' + Y + 'px)';
+    var transform = 'translate(' + X + 'px, ' + Y + 'px)';
+    clone.style['-webkit-transform'] = transform;
+    clone.style['-moz-transform'] = transform;
+    clone.style['-ie-transform'] = transform;
+    clone.style['-o-transform'] = transform;
+    clone.style['transform'] = transform;
   },
   set effectAllowed(value){
     if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
@@ -116,6 +132,7 @@ DragAndDrop.prototype.DataTransfer.prototype = {
       if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
         // only copy styles not inherited from the body
         copy.style[key] = originalStyle[key];
+        copy.style['pointer-events'] = 'none';
       }
     };
   },
@@ -184,7 +201,7 @@ DragAndDrop.prototype.findElementNodes = function(node){
 DragAndDrop.prototype.findDraggableNodes = function(node){
   // could do this with xpath
   // './/ancestor-or-self::*[@draggable="true"]'
-  var draggable = 'dragger';
+  var draggable = this.config.dragAttribute;
   var body = document.body;
   var draggable_nodes = [];
   while(node != body) {
@@ -226,7 +243,7 @@ DragAndDrop.prototype.touchStartCallback = function(e){
     this.nodes = this.findElementNodes(target);
 
     var dragStartEvent = document.createEvent("Event");
-    dragStartEvent.initEvent("dragstart", true, true);
+    dragStartEvent.initEvent(this.config.eventPrefix + "dragstart", true, true);
     var dataTransfer = new this.DataTransfer();
     dragStartEvent.dataTransfer = this.dataTransfer = dataTransfer;
     var dragStartCanceled = !dnodes[0].dispatchEvent(dragStartEvent);
@@ -246,7 +263,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   var dropElement = this.dropElement;
   if(dropElement !== null){
     var dropEvent = document.createEvent("Event");
-    dropEvent.initEvent("drop", true, true);
+    dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
     dropEvent.dataTransfer = this.dataTransfer;
     dropEvent.clientX = this.moveData.clientX;
     dropEvent.clientY = this.moveData.clientY;
@@ -257,11 +274,11 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   var oldNodes = this.nodes;
   for(var on = oldNodes.length -1 ; on >= 0 ; on--){
     var dragLeaveEvent = document.createEvent("Event");
-    dragLeaveEvent.initEvent("dragleave", true, true);
+    dragLeaveEvent.initEvent(s.config.eventPrefix + "dragleave", true, true);
     oldNodes[on].dispatchEvent(dragLeaveEvent);
   }
   var dragEndEvent = document.createEvent("Event");
-  dragEndEvent.initEvent("dragend", true, true);
+  dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
   this.dragNode.dispatchEvent(dragEndEvent);
@@ -288,11 +305,23 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       }
     }
     this.moveData = moveData;
+    // hack for browsers where pointer-events: none
+    // does not apply to elementFromPoint
+    // hide drag image to locate element under it.
+    // then reveal it before browser redraw
+    // causes flickering on ipad, so off by default
+    if(this.config.pointerEventsHack){
+      var display = this.dataTransfer.dragImage.clone.style.display;
+      this.dataTransfer.dragImage.clone.style.display = 'none';
+    }
     var element = document.elementFromPoint(moveData.clientX,moveData.clientY);
+    if(this.config.pointerEventsHack){
+      this.dataTransfer.dragImage.clone.style.display = display;
+    }
     this.dropElement = element;
     if(element !== null){
       var dragOverEvent = document.createEvent("Event");
-      dragOverEvent.initEvent("dragover", true, true);
+      dragOverEvent.initEvent(this.config.eventPrefix + "dragover", true, true);
       dragOverEvent.dataTransfer = this.dataTransfer;
       var dragOverCanceled = !element.dispatchEvent(dragOverEvent);
     }
@@ -309,12 +338,14 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
     for( ; i < elCount && oldNodes[i] === newNodes[i] ; i++){}
     for(var on = oldNodes.length -1 ; on >= i ; on--){
       var dragLeaveEvent = document.createEvent("Event");
-      dragLeaveEvent.initEvent("dragleave", true, true);
+      dragLeaveEvent.initEvent(this.config.eventPrefix + "dragleave",
+        true, true);
       oldNodes[on].dispatchEvent(dragLeaveEvent);
     }
     for(var nn = newNodes.length ; i < nn ; i++){
       var dragEnterEvent = document.createEvent("Event");
-      dragEnterEvent.initEvent("dragenter", true, true);
+      dragEnterEvent.initEvent(this.config.eventPrefix + "dragenter",
+        true, true);
       newNodes[i].dispatchEvent(dragEnterEvent);
     }
     this.nodes = newNodes;
@@ -323,7 +354,11 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
 }
 
 console.log("adding drag drop event listeners");
-var dnd = new DragAndDrop();
+var dnd_config = {
+  dragAttribute: 'dragger',
+  pointerEventsHack: false,
+};
+var dnd = new DragAndDrop(dnd_config);
 document.addEventListener('mousedown', dnd.touchStartCallback.bind(dnd), true);
 document.addEventListener('touchstart', dnd.touchStartCallback.bind(dnd), true);
 document.addEventListener('mouseup', dnd.touchEndCallback.bind(dnd), true);

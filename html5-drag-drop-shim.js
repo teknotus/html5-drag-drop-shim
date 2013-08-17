@@ -15,6 +15,7 @@ var DragAndDrop = function(configObject){
   this.dragging = false;
   this.nodes = [];
   this.dataTransfer;
+  this.dragOverCanceled;
 };
 DragAndDrop.prototype.DataTransfer = function(){
     this.types = [];
@@ -267,7 +268,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   this.dragging = false;
   document.body.removeChild(this.dataTransfer.dragImage.clone);
   var dropElement = this.dropElement;
-  if(dropElement !== null){
+  if(dropElement !== null && this.dragOverCanceled){
     var dropEvent = document.createEvent("Event");
     dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
     dropEvent.dataTransfer = this.dataTransfer;
@@ -285,6 +286,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   }
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
+  dragEndEvent.dataTransfer = this.dataTransfer;
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
   this.dataTransfer.element.dispatchEvent(dragEndEvent);
@@ -329,7 +331,7 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       var dragOverEvent = document.createEvent("Event");
       dragOverEvent.initEvent(this.config.eventPrefix + "dragover", true, true);
       dragOverEvent.dataTransfer = this.dataTransfer;
-      var dragOverCanceled = !element.dispatchEvent(dragOverEvent);
+      this.dragOverCanceled = !element.dispatchEvent(dragOverEvent);
     }
     var oldNodes = this.nodes;
     var newNodes;

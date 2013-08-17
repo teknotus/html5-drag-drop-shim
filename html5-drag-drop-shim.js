@@ -6,16 +6,17 @@ var DragAndDrop = function(configObject){
     pointerEventsHack: false
   };
   if(typeof configObject !== 'undefined'){
-  for (var key in configObject) {
-    if (configObject.hasOwnProperty(key)) {
-      this.config[key] = configObject[key];
+    for (var key in configObject) {
+      if (configObject.hasOwnProperty(key)) {
+        this.config[key] = configObject[key];
+      }
     }
-  }
   }
   this.dragging = false;
   this.nodes = [];
   this.dataTransfer;
   this.dragOverCanceled;
+  this.touchIdentifier;
 };
 DragAndDrop.prototype.DataTransfer = function(){
     this.types = [];
@@ -221,6 +222,9 @@ DragAndDrop.prototype.findDraggableNodes = function(node){
     return draggable_nodes;
 };
 DragAndDrop.prototype.touchStartCallback = function(e){
+  if(this.dragging){
+    this.dragEnd();
+  }
   var target,clientX,clientY;
   if(e.type == 'mousedown'){
     console.log("mousedown");
@@ -231,6 +235,7 @@ DragAndDrop.prototype.touchStartCallback = function(e){
     if(e.touches.length > 1){
       return;
     } else {
+      this.touchIdentifier = e.touches[0].identifier;
       target = e.touches[0].target;
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
@@ -265,8 +270,6 @@ DragAndDrop.prototype.touchStartCallback = function(e){
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
   console.log("mouseup or touchend");
-  this.dragging = false;
-  document.body.removeChild(this.dataTransfer.dragImage.clone);
   var dropElement = this.dropElement;
   if(dropElement !== null && this.dragOverCanceled){
     var dropEvent = document.createEvent("Event");
@@ -281,9 +284,14 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   var oldNodes = this.nodes;
   for(var on = oldNodes.length -1 ; on >= 0 ; on--){
     var dragLeaveEvent = document.createEvent("Event");
-    dragLeaveEvent.initEvent(s.config.eventPrefix + "dragleave", true, true);
+    dragLeaveEvent.initEvent(this.config.eventPrefix + "dragleave", true, true);
     oldNodes[on].dispatchEvent(dragLeaveEvent);
   }
+  this.dragEnd();
+}
+DragAndDrop.prototype.dragEnd = function(){
+  this.dragging = false;
+  document.body.removeChild(this.dataTransfer.dragImage.clone);
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
   dragEndEvent.dataTransfer = this.dataTransfer;
@@ -306,6 +314,10 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
         return;
       } else {
         //console.log('touchmove');
+        if(this.touchIdentifier !== e.touches[0].identifier){
+          this.dragEnd();
+          return;
+        }
         moveData.clientX = e.touches[0].clientX;
         moveData.clientY = e.touches[0].clientY;
         moveData.screenX = e.touches[0].screenX;

@@ -19,7 +19,7 @@ var DragAndDrop = function(configObject){
 DragAndDrop.prototype.DataTransfer = function(){
     this.types = [];
     this.data = {};
-    this.dragElement;
+    this.element;
     this.dragImage = {};
     this.dropEffect = 'none';
     this.effectAllowed = 'uninitialized';
@@ -38,7 +38,7 @@ DragAndDrop.prototype.DataTransfer.prototype = {
     for (var key in this.data) delete this.data[key];
   },
   addElement: function(element){
-    this.dragElement = element;
+    this.element = element;
   },
   setDragImage: function(image,x,y){
     console.log('setting drag image');
@@ -241,19 +241,23 @@ DragAndDrop.prototype.touchStartCallback = function(e){
   if(dcount){
     e.preventDefault();
     this.dragging = true;
-    this.dragNode = dnodes[0];
+    var dragNode = dnodes[0];
+    this.dragNode = dragNode;
     this.nodes = this.findElementNodes(target);
 
     var dragStartEvent = document.createEvent("Event");
     dragStartEvent.initEvent(this.config.eventPrefix + "dragstart", true, true);
     var dataTransfer = new this.DataTransfer();
     dragStartEvent.dataTransfer = this.dataTransfer = dataTransfer;
-    var dragStartCanceled = !dnodes[0].dispatchEvent(dragStartEvent);
+    var dragStartCanceled = !dragNode.dispatchEvent(dragStartEvent);
     if(typeof dataTransfer.dragImage.clone === 'undefined'){
-      var rect = dnodes[0].getBoundingClientRect();
+      var rect = dragNode.getBoundingClientRect();
       var offsetY = clientY - rect.top;
       var offsetX = clientX - rect.left;
       dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
+    }
+    if(typeof dataTransfer.element === 'undefined'){
+      dataTransfer.element = dragNode;
     }
     dataTransfer.setDragImagePos(clientX,clientY);
   }
@@ -283,7 +287,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
-  this.dragNode.dispatchEvent(dragEndEvent);
+  this.dataTransfer.element.dispatchEvent(dragEndEvent);
 }
 DragAndDrop.prototype.touchMoveCallback = function(e){
   if(this.dragging){

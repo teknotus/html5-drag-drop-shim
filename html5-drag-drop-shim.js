@@ -5,10 +5,12 @@ var DragAndDrop = function(configObject){
     eventPrefix: '',
     pointerEventsHack: false
   };
+  if(typeof configObject !== 'undefined'){
   for (var key in configObject) {
     if (configObject.hasOwnProperty(key)) {
       this.config[key] = configObject[key];
     }
+  }
   }
   this.dragging = false;
   this.nodes = [];
@@ -352,6 +354,26 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
     this.dataTransfer.setDragImagePos(moveData.clientX,moveData.clientY);
   }
 }
+DragAndDrop.prototype.addTouchListeners = function(){
+  document.addEventListener('touchstart',
+    this.touchStartCallback.bind(this), true);
+  document.addEventListener('touchend',
+    this.touchEndCallback.bind(this), true);
+  document.addEventListener('touchmove',
+    this.touchMoveCallback.bind(this), true);
+}
+DragAndDrop.prototype.addMouseListeners = function(){
+  document.addEventListener('mousedown',
+    this.touchStartCallback.bind(this), true);
+  document.addEventListener('mouseup',
+    this.touchEndCallback.bind(this), true);
+  document.addEventListener('mousemove',
+    this.touchMoveCallback.bind(this), true);
+}
+DragAndDrop.prototype.addListeners = function(){
+  this.addTouchListeners();
+  this.addMouseListeners();
+}
 
 console.log("adding drag drop event listeners");
 var dnd_config = {
@@ -359,10 +381,4 @@ var dnd_config = {
   pointerEventsHack: false,
 };
 var dnd = new DragAndDrop(dnd_config);
-document.addEventListener('mousedown', dnd.touchStartCallback.bind(dnd), true);
-document.addEventListener('touchstart', dnd.touchStartCallback.bind(dnd), true);
-document.addEventListener('mouseup', dnd.touchEndCallback.bind(dnd), true);
-document.addEventListener('touchend', dnd.touchEndCallback.bind(dnd), true);
-document.addEventListener('mousemove', dnd.touchMoveCallback.bind(dnd), true);
-document.addEventListener('touchmove', dnd.touchMoveCallback.bind(dnd), true);
-
+dnd.addListeners();

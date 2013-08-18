@@ -107,11 +107,9 @@ DragAndDrop.prototype.DataTransfer.prototype = {
     }
   },
   set dropEffect(value){
-    var effect;
+    var effect = 0;
     if(/copy|move|link|none/.test(value)){
-      if(value === 'none'){
-        this._dropEffect = 'none';
-      } else if( value === 'copy' ){
+      if( value === 'copy' ){
         effect = 1;
       } else if(value === 'move'){
         effect = 2;
@@ -223,6 +221,7 @@ DragAndDrop.prototype.findDraggableNodes = function(node){
 };
 DragAndDrop.prototype.touchStartCallback = function(e){
   if(this.dragging){
+    this.dropEffect = 'none';
     this.dragEnd();
   }
   var target,clientX,clientY;
@@ -280,6 +279,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
     dropElement.dispatchEvent(dropEvent);
   } else {
     console.log('invalid drop target');
+    this.dataTransfer.dropEffect = 'none';
   }
   var oldNodes = this.nodes;
   for(var on = oldNodes.length -1 ; on >= 0 ; on--){
@@ -315,6 +315,7 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       } else {
         //console.log('touchmove');
         if(this.touchIdentifier !== e.touches[0].identifier){
+          this.dropEffect = 'none';
           this.dragEnd();
           return;
         }

@@ -17,6 +17,7 @@ var DragAndDrop = function(configObject){
   this.dataTransfer;
   this.dragOverCanceled;
   this.touchIdentifier;
+  this.dragInit = false;
   this.newDataTransfer = function(){
     return new DataTransfer();
   };
@@ -197,9 +198,7 @@ DragAndDrop.prototype.findElementNodes = function(node){
     } catch (e) {
       console.log('error type: ' + e.name);
       node = document;
-    }// finally {
-//      node = body;
-  //  }
+    }
   }
   return nodes.reverse();
 };
@@ -248,11 +247,13 @@ DragAndDrop.prototype.touchStartCallback = function(e){
 //  console.log('draggable_nodes count: ' + dcount);
   if(dcount){
     e.preventDefault();
-    this.dragging = true;
     var dragNode = dnodes[0];
     this.dragNode = dragNode;
     this.nodes = this.findElementNodes(target);
-
+    this.dragInit = true;
+};
+DragAndDrop.prototype.dragStart = function(){
+    this.dragging = true;
     var dragStartEvent = document.createEvent("Event");
     dragStartEvent.initEvent(this.config.eventPrefix + "dragstart", true, true);
     var dataTransfer = this.newDataTransfer();
@@ -272,25 +273,28 @@ DragAndDrop.prototype.touchStartCallback = function(e){
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
   console.log("mouseup or touchend");
-  var dropElement = this.dropElement;
-  if(dropElement !== null && this.dragOverCanceled){
-    var dropEvent = document.createEvent("Event");
-    dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
-    dropEvent.dataTransfer = this.dataTransfer;
-    dropEvent.clientX = this.moveData.clientX;
-    dropEvent.clientY = this.moveData.clientY;
-    dropElement.dispatchEvent(dropEvent);
-  } else {
-    console.log('invalid drop target');
-    this.dataTransfer.dropEffect = 'none';
+  if(this.dragging){
+    var dropElement = this.dropElement;
+    if(dropElement !== null && this.dragOverCanceled){
+      var dropEvent = document.createEvent("Event");
+      dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
+      dropEvent.dataTransfer = this.dataTransfer;
+      dropEvent.clientX = this.moveData.clientX;
+      dropEvent.clientY = this.moveData.clientY;
+      dropElement.dispatchEvent(dropEvent);
+    } else {
+      console.log('invalid drop target');
+      this.dataTransfer.dropEffect = 'none';
+    }
+    var oldNodes = this.nodes;
+    for(var on = oldNodes.length -1 ; on >= 0 ; on--){
+      var dragLeaveEvent = document.createEvent("Event");
+      dragLeaveEvent.initEvent(this.config.eventPrefix + "dragleave",
+        true, true);
+      oldNodes[on].dispatchEvent(dragLeaveEvent);
+    }
+    this.dragEnd();
   }
-  var oldNodes = this.nodes;
-  for(var on = oldNodes.length -1 ; on >= 0 ; on--){
-    var dragLeaveEvent = document.createEvent("Event");
-    dragLeaveEvent.initEvent(this.config.eventPrefix + "dragleave", true, true);
-    oldNodes[on].dispatchEvent(dragLeaveEvent);
-  }
-  this.dragEnd();
 }
 DragAndDrop.prototype.dragEnd = function(){
   this.dragging = false;
@@ -303,6 +307,10 @@ DragAndDrop.prototype.dragEnd = function(){
   this.dataTransfer.element.dispatchEvent(dragEndEvent);
 }
 DragAndDrop.prototype.touchMoveCallback = function(e){
+  if(this.dragInit){
+    this.dragStart();
+    this.dragInit = false;
+  }
   if(this.dragging){
     console.log('dragging');
     var moveData = {}

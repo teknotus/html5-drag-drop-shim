@@ -17,8 +17,10 @@ var DragAndDrop = function(configObject){
   this.dataTransfer;
   this.dragOverCanceled;
   this.touchIdentifier;
-};
-DragAndDrop.prototype.DataTransfer = function(){
+  this.newDataTransfer = function(){
+    return new DataTransfer();
+  };
+var DataTransfer = function(){
     this.types = [];
     this.data = {};
     this.element;
@@ -26,8 +28,8 @@ DragAndDrop.prototype.DataTransfer = function(){
     this.dropEffect = 'none';
     this.effectAllowed = 'uninitialized';
     this.effectAllowedMask = 7;
-  };
-DragAndDrop.prototype.DataTransfer.prototype = {
+  }
+DataTransfer.prototype = {
   setData: function(type, value){
     this.types.push(type);
     this.data[type] = value;
@@ -184,6 +186,7 @@ DragAndDrop.prototype.DataTransfer.prototype = {
     }
   }
 };
+};
 DragAndDrop.prototype.findElementNodes = function(node){
   var body = document.body;
   var nodes = [];
@@ -252,7 +255,7 @@ DragAndDrop.prototype.touchStartCallback = function(e){
 
     var dragStartEvent = document.createEvent("Event");
     dragStartEvent.initEvent(this.config.eventPrefix + "dragstart", true, true);
-    var dataTransfer = new this.DataTransfer();
+    var dataTransfer = this.newDataTransfer();
     dragStartEvent.dataTransfer = this.dataTransfer = dataTransfer;
     var dragStartCanceled = !dragNode.dispatchEvent(dragStartEvent);
     if(typeof dataTransfer.dragImage.clone === 'undefined'){

@@ -20,172 +20,172 @@ var DragAndDrop = function(configObject){
   this.newDataTransfer = function(){
     return new DataTransfer();
   };
-var DataTransfer = function(){
-    this.types = [];
-    this.data = {};
-    this.element;
-    this.dragImage = {};
-    this.dropEffect = 'none';
-    this.effectAllowed = 'uninitialized';
-    this.effectAllowedMask = 7;
-  }
-DataTransfer.prototype = {
-  setData: function(type, value){
-    this.types.push(type);
-    this.data[type] = value;
-  },
-  getData: function(type){
-    return this.data[type];
-  },
-  clearData: function(){
-    this.types.length = 0;
-    for (var key in this.data) delete this.data[key];
-  },
-  addElement: function(element){
-    this.element = element;
-  },
-  setDragImage: function(image,x,y){
-    console.log('setting drag image');
-    if(typeof this.dragImage.clone !== 'undefined'){
-      document.removeChild(this.dragImage.clone);
+  var DataTransfer = function(){
+      this.types = [];
+      this.data = {};
+      this.element;
+      this.dragImage = {};
+      this.dropEffect = 'none';
+      this.effectAllowed = 'uninitialized';
+      this.effectAllowedMask = 7;
     }
-    var clone = this.cloneWithStyle(image);
-    document.body.appendChild(clone);
-    clone.style.position = "absolute";
-    clone.style['z-index'] = 5000;
-    clone.style.top = '0px';
-    clone.style.left = '0px';
-    clone.style.overflow = 'hidden';
-    clone.style['pointer-events'] = 'none';
-    this.dragImage = {
-      image: image,
-      clone: clone,
-      cloneOrigRect: clone.getBoundingClientRect(),
-      x: x,
-      y: y
-    };
-  },
-  setDragImagePos: function(clientX,clientY){
-    var cloneOrigWidth = this.dragImage.cloneOrigRect.width;
-    var X = clientX - this.dragImage.x;
-    var Y = clientY - this.dragImage.y;
-    var clone = this.dragImage.clone;
-    // if dragged item extends to right of screen trim it to fit
-    var overflow = (X + cloneOrigWidth) - window.innerWidth;
-    if(overflow > 0){
-      clone.style.width = (cloneOrigWidth - overflow) + 'px';
-    } else {
-      clone.style.width = cloneOrigWidth + 'px';
-    }
-    var transform = 'translate(' + X + 'px, ' + Y + 'px)';
-    clone.style['-webkit-transform'] = transform;
-    clone.style['-moz-transform'] = transform;
-    clone.style['-ie-transform'] = transform;
-    clone.style['-o-transform'] = transform;
-    clone.style['transform'] = transform;
-  },
-  set effectAllowed(value){
-    if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
-      this._effectAllowed = value;
-      if(value === 'none'){ //bitmask
-        this.effectAllowedMask = 0;
-      } else if(value === 'copy'){
-        this.effectAllowedMask = 1;
-      } else if(value === 'move'){
-        this.effectAllowedMask = 2;
-      } else if(value === 'link'){
-        this.effectAllowedMask = 4;
-      } else if(value === 'copyLink'){
-        this.effectAllowedMask = 5;
-      } else if(value === 'copyMove'){
-        this.effectAllowedMask = 3;
-      } else if(value === 'linkMove'){
-        this.effectAllowedMask = 6;
-      } else if(value === 'all'){
-        this.effectAllowedMask = 7;
+  DataTransfer.prototype = {
+    setData: function(type, value){
+      this.types.push(type);
+      this.data[type] = value;
+    },
+    getData: function(type){
+      return this.data[type];
+    },
+    clearData: function(){
+      this.types.length = 0;
+      for (var key in this.data) delete this.data[key];
+    },
+    addElement: function(element){
+      this.element = element;
+    },
+    setDragImage: function(image,x,y){
+      console.log('setting drag image');
+      if(typeof this.dragImage.clone !== 'undefined'){
+        document.removeChild(this.dragImage.clone);
       }
-    } else {
-      this._effectAllowed = 'none';
-    }
-  },
-  set dropEffect(value){
-    var effect = 0;
-    if(/copy|move|link|none/.test(value)){
-      if( value === 'copy' ){
-        effect = 1;
-      } else if(value === 'move'){
-        effect = 2;
-      } else if(value === 'link'){
-        effect = 4;
+      var clone = this.cloneWithStyle(image);
+      document.body.appendChild(clone);
+      clone.style.position = "absolute";
+      clone.style['z-index'] = 5000;
+      clone.style.top = '0px';
+      clone.style.left = '0px';
+      clone.style.overflow = 'hidden';
+      clone.style['pointer-events'] = 'none';
+      this.dragImage = {
+        image: image,
+        clone: clone,
+        cloneOrigRect: clone.getBoundingClientRect(),
+        x: x,
+        y: y
+      };
+    },
+    setDragImagePos: function(clientX,clientY){
+      var cloneOrigWidth = this.dragImage.cloneOrigRect.width;
+      var X = clientX - this.dragImage.x;
+      var Y = clientY - this.dragImage.y;
+      var clone = this.dragImage.clone;
+      // if dragged item extends to right of screen trim it to fit
+      var overflow = (X + cloneOrigWidth) - window.innerWidth;
+      if(overflow > 0){
+        clone.style.width = (cloneOrigWidth - overflow) + 'px';
+      } else {
+        clone.style.width = cloneOrigWidth + 'px';
       }
-      if(effect & this.effectAllowedMask){ //bitwise &
-        this._dropEffect = value;
+      var transform = 'translate(' + X + 'px, ' + Y + 'px)';
+      clone.style['-webkit-transform'] = transform;
+      clone.style['-moz-transform'] = transform;
+      clone.style['-ie-transform'] = transform;
+      clone.style['-o-transform'] = transform;
+      clone.style['transform'] = transform;
+    },
+    set effectAllowed(value){
+      if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
+        this._effectAllowed = value;
+        if(value === 'none'){ //bitmask
+          this.effectAllowedMask = 0;
+        } else if(value === 'copy'){
+          this.effectAllowedMask = 1;
+        } else if(value === 'move'){
+          this.effectAllowedMask = 2;
+        } else if(value === 'link'){
+          this.effectAllowedMask = 4;
+        } else if(value === 'copyLink'){
+          this.effectAllowedMask = 5;
+        } else if(value === 'copyMove'){
+          this.effectAllowedMask = 3;
+        } else if(value === 'linkMove'){
+          this.effectAllowedMask = 6;
+        } else if(value === 'all'){
+          this.effectAllowedMask = 7;
+        }
+      } else {
+        this._effectAllowed = 'none';
+      }
+    },
+    set dropEffect(value){
+      var effect = 0;
+      if(/copy|move|link|none/.test(value)){
+        if( value === 'copy' ){
+          effect = 1;
+        } else if(value === 'move'){
+          effect = 2;
+        } else if(value === 'link'){
+          effect = 4;
+        }
+        if(effect & this.effectAllowedMask){ //bitwise &
+          this._dropEffect = value;
+        } else {
+          this._dropEffect = 'none';
+        }
       } else {
         this._dropEffect = 'none';
       }
-    } else {
-      this._dropEffect = 'none';
-    }
-  },
-  copyStyle: function(original,copy){
-    var originalStyle = window.getComputedStyle(original);
-    var bodyStyle = window.getComputedStyle(document.body);
-    var key;
-    for(var l = originalStyle.length,i = 0; i < l ; i++){
-      key = originalStyle[i];
-      if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
-        // only copy styles not inherited from the body
-        copy.style[key] = originalStyle[key];
-        copy.style['pointer-events'] = 'none';
-      }
-    };
-  },
-  cloneWithStyle: function(nodeOrig){
-    var copyRoot = document.createElement('div');
-    var treeWalker = document.createTreeWalker(
-      nodeOrig, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
-    var node = treeWalker;
-    var currentNode,newNode;
-    var copyNode = copyRoot;
-    var appendType = 'child';
-    var explode = 5000;
-    while(explode > 0){
-      explode--;
-      currentNode = treeWalker.currentNode;
-      if(currentNode.nodeType == 1){
-        newNode = document.createElement(currentNode.nodeName);
-        if(currentNode.nodeName === 'IMG'){
-          newNode.src = currentNode.src;
-        } else if(currentNode.nodeName === 'CANVAS'){
-          newNode.width = currentNode.width;
-          newNode.height = currentNode.height;
-          newNode.getContext('2d').drawImage(currentNode,0,0);
+    },
+    copyStyle: function(original,copy){
+      var originalStyle = window.getComputedStyle(original);
+      var bodyStyle = window.getComputedStyle(document.body);
+      var key;
+      for(var l = originalStyle.length,i = 0; i < l ; i++){
+        key = originalStyle[i];
+        if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
+          // only copy styles not inherited from the body
+          copy.style[key] = originalStyle[key];
+          copy.style['pointer-events'] = 'none';
         }
-        this.copyStyle(currentNode,newNode);
-      }else if(currentNode.nodeType == 3){
-        newNode = document.createTextNode(currentNode.nodeValue);
-      }
-      if(appendType === 'child'){
-        copyNode.appendChild(newNode);
-      } else if(appendType === 'sibling'){
-        copyNode.parentNode.appendChild(newNode);
-      }
-      copyNode = newNode;
-      if(node.firstChild()){
-        appendType = 'child';
-      } else {
-        while(!node.nextSibling()){
-          if(node.currentNode == node.root){
-            return copyRoot;
+      };
+    },
+    cloneWithStyle: function(nodeOrig){
+      var copyRoot = document.createElement('div');
+      var treeWalker = document.createTreeWalker(
+        nodeOrig, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+      var node = treeWalker;
+      var currentNode,newNode;
+      var copyNode = copyRoot;
+      var appendType = 'child';
+      var explode = 5000;
+      while(explode > 0){
+        explode--;
+        currentNode = treeWalker.currentNode;
+        if(currentNode.nodeType == 1){
+          newNode = document.createElement(currentNode.nodeName);
+          if(currentNode.nodeName === 'IMG'){
+            newNode.src = currentNode.src;
+          } else if(currentNode.nodeName === 'CANVAS'){
+            newNode.width = currentNode.width;
+            newNode.height = currentNode.height;
+            newNode.getContext('2d').drawImage(currentNode,0,0);
           }
-          node.parentNode();
-          copyNode = copyNode.parentNode;
+          this.copyStyle(currentNode,newNode);
+        }else if(currentNode.nodeType == 3){
+          newNode = document.createTextNode(currentNode.nodeValue);
         }
-        appendType = 'sibling';
+        if(appendType === 'child'){
+          copyNode.appendChild(newNode);
+        } else if(appendType === 'sibling'){
+          copyNode.parentNode.appendChild(newNode);
+        }
+        copyNode = newNode;
+        if(node.firstChild()){
+          appendType = 'child';
+        } else {
+          while(!node.nextSibling()){
+            if(node.currentNode == node.root){
+              return copyRoot;
+            }
+            node.parentNode();
+            copyNode = copyNode.parentNode;
+          }
+          appendType = 'sibling';
+        }
       }
     }
-  }
-};
+  };
 };
 DragAndDrop.prototype.findElementNodes = function(node){
   var body = document.body;

@@ -3,7 +3,9 @@ var DragAndDrop = function(configObject){
   this.config = {
     dragAttribute: 'draggable',
     eventPrefix: '',
-    pointerEventsHack: false
+    pointerEventsHack: false,
+    cancelAnimation: true,
+    cancelAnimationDuration: 0.4 // seconds
   };
   if(typeof configObject !== 'undefined'){
     for (var key in configObject) {
@@ -305,13 +307,69 @@ DragAndDrop.prototype.touchEndCallback = function(e){
 }
 DragAndDrop.prototype.dragEnd = function(){
   this.dragging = false;
-  document.body.removeChild(this.dataTransfer.dragImage.clone);
+  if(this.dataTransfer.dropEffect == 'none'){
+    // Drop canceled
+    if(this.config.cancelAnimation){
+      this.cancelAnimation();
+    } else {
+      var clone = this.dataTransfer.dragImage.clone;
+      clone.parentElement.removeChild(clone);
+    }
+  } else {
+    document.body.removeChild(this.dataTransfer.dragImage.clone);
+  }
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
   dragEndEvent.dataTransfer = this.dataTransfer;
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
   this.dataTransfer.element.dispatchEvent(dragEndEvent);
+}
+DragAndDrop.prototype.cancelAnimation = function(){
+  // Animate dragImage back to starting point then remove it from DOM
+  var clone = this.dataTransfer.dragImage.clone;
+  var style = clone.style;
+  var rect = this.dragNode.getBoundingClientRect();
+  var transform = 'translate(' + rect.left + 'px,' + rect.top + 'px)';
+  var duration = this.config.cancelAnimationDuration;
+  var durationString = duration + 's';
+  // failsafe in case transition is interupted
+  var timeoutId = window.setTimeout(function(){
+    console.log('transitionend callback failed');
+    clone.parentElement.removeChild(clone);
+  }, duration * 1000 + 25);
+  style['transition-property'] = 'transform';
+  style['transition-duration'] = durationString;
+  style['transform'] = transform;
+  style['-webkit-transform'] = transform;
+  style['-webkit-transition-property'] = 'transform';
+  style['-webkit-transition-duration'] = durationString;
+  style['-moz-transition-property'] = 'transform';
+  style['-moz-transition-duration'] = durationString;
+  style['-moz-transform'] = transform;
+  style['-ms-transform'] = transform;
+  style['-ms-transition-property'] = 'transform';
+  style['-ms-transition-duration'] = durationString;
+  style['-o-transform'] = transform;
+  style['-o-transition-property'] = 'transform';
+  style['-o-transition-duration'] = durationString;
+  var transitionEndCallback = function(e){
+    var element = e.srcElement;
+    if(clone === element){
+      window.clearTimeout(timeoutId);
+      element.parentElement.removeChild(element);
+    }
+  };
+  clone.addEventListener('transitionend',
+    transitionEndCallback, false);
+  clone.addEventListener('webkitTransitionEnd',
+    transitionEndCallback, false);
+  clone.addEventListener('MSTransitionEnd',
+    transitionEndCallback, false);
+  clone.addEventListener('oTransitionEnd',
+    transitionEndCallback, false);
+  clone.addEventListener('otransitionend',
+    transitionEndCallback, false);
 }
 DragAndDrop.prototype.touchMoveCallback = function(e){
   if(this.dragInit){

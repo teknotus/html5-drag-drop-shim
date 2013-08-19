@@ -272,6 +272,7 @@ DragAndDrop.prototype.dragStart = function(){
   }
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
+  this.dragInit = false;
   console.log("mouseup or touchend");
   if(this.dragging){
     var dropElement = this.dropElement;

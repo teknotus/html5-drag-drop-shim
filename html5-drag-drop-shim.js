@@ -26,9 +26,9 @@ var DragAndDrop = function(configObject){
       this.data = {};
       this.element;
       this.dragImage = {};
-      this.dropEffect = 'none';
       this.effectAllowed = 'uninitialized';
       this.effectAllowedMask = 7;
+      this.dropEffect = 'none';
     }
   DataTransfer.prototype = {
     setData: function(type, value){
@@ -109,6 +109,9 @@ var DragAndDrop = function(configObject){
         this._effectAllowed = 'none';
       }
     },
+    get effectAllowed(){
+      return this._effectAllowed;
+    },
     set dropEffect(value){
       var effect = 0;
       if(/copy|move|link|none/.test(value)){
@@ -127,6 +130,9 @@ var DragAndDrop = function(configObject){
       } else {
         this._dropEffect = 'none';
       }
+    },
+    get dropEffect(){
+      return this._dropEffect;
     },
     copyStyle: function(original,copy){
       var originalStyle = window.getComputedStyle(original);

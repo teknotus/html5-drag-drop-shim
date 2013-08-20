@@ -16,7 +16,6 @@ var DragAndDrop = function(configObject){
   }
   var pTypes = [];
   var pData = {};
-  //this.dragEndElement;
   var setDragEndElement = function(element){
     this.dragEndElement = element;
   }.bind(this);
@@ -31,9 +30,6 @@ var DragAndDrop = function(configObject){
     return new DataTransfer();
   };
   var DataTransfer = function(){
-    //this.types = [];
-    //this.data = {};
-    //this.element;
     this.dragImage = {};
     this.effectAllowed = 'uninitialized';
     this.effectAllowedMask = 7;

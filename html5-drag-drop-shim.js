@@ -14,6 +14,13 @@ var DragAndDrop = function(configObject){
       }
     }
   }
+  var pTypes = [];
+  var pData = {};
+  //this.dragEndElement;
+  var setDragEndElement = function(element){
+    this.dragEndElement = element;
+  }.bind(this);
+
   this.dragging = false;
   this.nodes = [];
   this.dataTransfer;
@@ -24,28 +31,35 @@ var DragAndDrop = function(configObject){
     return new DataTransfer();
   };
   var DataTransfer = function(){
-      this.types = [];
-      this.data = {};
-      this.element;
-      this.dragImage = {};
-      this.effectAllowed = 'uninitialized';
-      this.effectAllowedMask = 7;
-      this.dropEffect = 'none';
-    }
+    //this.types = [];
+    //this.data = {};
+    //this.element;
+    this.dragImage = {};
+    this.effectAllowed = 'uninitialized';
+    this.effectAllowedMask = 7;
+    this.dropEffect = 'none';
+  }
   DataTransfer.prototype = {
+    get files(){
+      return [];
+    },
     setData: function(type, value){
-      this.types.push(type);
-      this.data[type] = value;
+      type = type.toLowerCase(); // supposed to be only ascii lowercase
+      pTypes.push(type);
+      pData[type] = value;
     },
     getData: function(type){
-      return this.data[type];
+      return pData[type.toLowerCase()];
     },
     clearData: function(){
-      this.types.length = 0;
-      for (var key in this.data) delete this.data[key];
+      pTypes.length = 0;
+      for (var key in pData) delete pData[key];
     },
     addElement: function(element){
-      this.element = element;
+      setDragEndElement(element);
+    },
+    get types(){
+      return pTypes.slice(0);
     },
     setDragImage: function(image,x,y){
       console.log('setting drag image');
@@ -273,8 +287,8 @@ DragAndDrop.prototype.dragStart = function(){
       var offsetX = clientX - rect.left;
       dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
     }
-    if(typeof dataTransfer.element === 'undefined'){
-      dataTransfer.element = dragNode;
+    if(typeof this.dragEndElement === 'undefined'){
+      this.dragEndElement = dragNode;
     }
     dataTransfer.setDragImagePos(clientX,clientY);
   }
@@ -323,7 +337,8 @@ DragAndDrop.prototype.dragEnd = function(){
   dragEndEvent.dataTransfer = this.dataTransfer;
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
-  this.dataTransfer.element.dispatchEvent(dragEndEvent);
+  this.dragEndElement.dispatchEvent(dragEndEvent);
+  this.dragEndElement = undefined;
 }
 DragAndDrop.prototype.cancelAnimation = function(){
   // Animate dragImage back to starting point then remove it from DOM

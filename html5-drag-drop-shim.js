@@ -36,9 +36,6 @@ var DragAndDrop = function(configObject){
     this.dropEffect = 'none';
   }
   DataTransfer.prototype = {
-    get files(){
-      return [];
-    },
     setData: function(type, value){
       type = type.toLowerCase(); // supposed to be only ascii lowercase
       pTypes.push(type);
@@ -205,6 +202,11 @@ var DragAndDrop = function(configObject){
       }
     }
   };
+  Object.defineProperty(DataTransfer.prototype, "files",{
+      get: function(){return [];},
+      enumerable: true,
+      configurable: false
+  });
 };
 DragAndDrop.prototype.findElementNodes = function(node){
   var body = document.body;

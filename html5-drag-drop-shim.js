@@ -17,15 +17,95 @@ var DragAndDrop = function(configObject){
   var pEffectAllowed,effectAllowedMask,pDropEffect;
   var pTypes = [];
   var pData = {};
+  var dragImage = {};
   var setDragEndElement = function(element){
     this.dragEndElement = element;
   }.bind(this);
+  var copyStyle = function(original,copy){
+    var originalStyle = window.getComputedStyle(original);
+    var bodyStyle = window.getComputedStyle(document.body);
+    var key;
+    for(var l = originalStyle.length,i = 0; i < l ; i++){
+      key = originalStyle[i];
+      if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
+        // only copy styles not inherited from the body
+        copy.style[key] = originalStyle[key];
+        copy.style['pointer-events'] = 'none';
+      }
+    };
+  };
+  var cloneWithStyle = function(nodeOrig){
+    var copyRoot = document.createElement('div');
+    var treeWalker = document.createTreeWalker(
+      nodeOrig, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+    var node = treeWalker;
+    var currentNode,newNode;
+    var copyNode = copyRoot;
+    var appendType = 'child';
+    var explode = 5000;
+    while(explode > 0){
+      explode--;
+      currentNode = treeWalker.currentNode;
+      if(currentNode.nodeType == 1){
+        newNode = document.createElement(currentNode.nodeName);
+        if(currentNode.nodeName === 'IMG'){
+          newNode.src = currentNode.src;
+        } else if(currentNode.nodeName === 'CANVAS'){
+          newNode.width = currentNode.width;
+          newNode.height = currentNode.height;
+          newNode.getContext('2d').drawImage(currentNode,0,0);
+        }
+        copyStyle(currentNode,newNode);
+      }else if(currentNode.nodeType == 3){
+        newNode = document.createTextNode(currentNode.nodeValue);
+      }
+      if(appendType === 'child'){
+        copyNode.appendChild(newNode);
+      } else if(appendType === 'sibling'){
+        copyNode.parentNode.appendChild(newNode);
+      }
+      copyNode = newNode;
+      if(node.firstChild()){
+        appendType = 'child';
+      } else {
+        while(!node.nextSibling()){
+          if(node.currentNode == node.root){
+            return copyRoot;
+          }
+          node.parentNode();
+          copyNode = copyNode.parentNode;
+        }
+        appendType = 'sibling';
+      }
+    }
+  }
   this.resetDataTransfer = function(){
     pEffectAllowed = 'uninitialized';
     pEffectAllowedMask = 7;
     pDropEffect = 'none';
     this.dragEndElement = undefined;
+    dragImage = {};
   };
+  this.setDragImagePos = function(clientX,clientY){
+    var cloneOrigWidth = dragImage.cloneOrigRect.width;
+    var X = clientX - dragImage.x;
+    var Y = clientY - dragImage.y;
+    var clone = dragImage.clone;
+    // if dragged item extends to right of screen trim it to fit
+    var overflow = (X + cloneOrigWidth) - window.innerWidth;
+    if(overflow > 0){
+      clone.style.width = (cloneOrigWidth - overflow) + 'px';
+    } else {
+      clone.style.width = cloneOrigWidth + 'px';
+    }
+    var transform = 'translate(' + X + 'px, ' + Y + 'px)';
+    clone.style['-webkit-transform'] = transform;
+    clone.style['-moz-transform'] = transform;
+    clone.style['-ie-transform'] = transform;
+    clone.style['-o-transform'] = transform;
+    clone.style['transform'] = transform;
+  };
+  this.getDragImage = function(){return dragImage};
   this.resetDataTransfer();
   this.dragging = false;
   this.nodes = [];
@@ -36,34 +116,29 @@ var DragAndDrop = function(configObject){
   this.newDataTransfer = function(){
     return new DataTransfer();
   };
-  var DataTransfer = function(){
-    this.dragImage = {};
-  }
+  var DataTransfer = function(){}
   DataTransfer.prototype = {
-    setData: function(type, value){
-      type = type.toLowerCase(); // supposed to be only ascii lowercase
-      pTypes.push(type);
-      pData[type] = value;
-    },
-    getData: function(type){
-      return pData[type.toLowerCase()];
+    addElement: function(element){
+      setDragEndElement(element);
     },
     clearData: function(){
       pTypes.length = 0;
       for (var key in pData) delete pData[key];
     },
-    addElement: function(element){
-      setDragEndElement(element);
+    getData: function(type){
+      return pData[type.toLowerCase()];
     },
-    get types(){
-      return pTypes.slice(0);
+    setData: function(type, value){
+      type = type.toLowerCase(); // supposed to be only ascii lowercase
+      pTypes.push(type);
+      pData[type] = value;
     },
     setDragImage: function(image,x,y){
       console.log('setting drag image');
-      if(typeof this.dragImage.clone !== 'undefined'){
-        document.removeChild(this.dragImage.clone);
+      if(typeof dragImage.clone !== 'undefined'){
+        document.removeChild(dragImage.clone);
       }
-      var clone = this.cloneWithStyle(image);
+      var clone = cloneWithStyle(image);
       document.body.appendChild(clone);
       clone.style.position = "absolute";
       clone.style['z-index'] = 5000;
@@ -71,7 +146,7 @@ var DragAndDrop = function(configObject){
       clone.style.left = '0px';
       clone.style.overflow = 'hidden';
       clone.style['pointer-events'] = 'none';
-      this.dragImage = {
+      dragImage = {
         image: image,
         clone: clone,
         cloneOrigRect: clone.getBoundingClientRect(),
@@ -79,83 +154,6 @@ var DragAndDrop = function(configObject){
         y: y
       };
     },
-    setDragImagePos: function(clientX,clientY){
-      var cloneOrigWidth = this.dragImage.cloneOrigRect.width;
-      var X = clientX - this.dragImage.x;
-      var Y = clientY - this.dragImage.y;
-      var clone = this.dragImage.clone;
-      // if dragged item extends to right of screen trim it to fit
-      var overflow = (X + cloneOrigWidth) - window.innerWidth;
-      if(overflow > 0){
-        clone.style.width = (cloneOrigWidth - overflow) + 'px';
-      } else {
-        clone.style.width = cloneOrigWidth + 'px';
-      }
-      var transform = 'translate(' + X + 'px, ' + Y + 'px)';
-      clone.style['-webkit-transform'] = transform;
-      clone.style['-moz-transform'] = transform;
-      clone.style['-ie-transform'] = transform;
-      clone.style['-o-transform'] = transform;
-      clone.style['transform'] = transform;
-    },
-    copyStyle: function(original,copy){
-      var originalStyle = window.getComputedStyle(original);
-      var bodyStyle = window.getComputedStyle(document.body);
-      var key;
-      for(var l = originalStyle.length,i = 0; i < l ; i++){
-        key = originalStyle[i];
-        if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
-          // only copy styles not inherited from the body
-          copy.style[key] = originalStyle[key];
-          copy.style['pointer-events'] = 'none';
-        }
-      };
-    },
-    cloneWithStyle: function(nodeOrig){
-      var copyRoot = document.createElement('div');
-      var treeWalker = document.createTreeWalker(
-        nodeOrig, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
-      var node = treeWalker;
-      var currentNode,newNode;
-      var copyNode = copyRoot;
-      var appendType = 'child';
-      var explode = 5000;
-      while(explode > 0){
-        explode--;
-        currentNode = treeWalker.currentNode;
-        if(currentNode.nodeType == 1){
-          newNode = document.createElement(currentNode.nodeName);
-          if(currentNode.nodeName === 'IMG'){
-            newNode.src = currentNode.src;
-          } else if(currentNode.nodeName === 'CANVAS'){
-            newNode.width = currentNode.width;
-            newNode.height = currentNode.height;
-            newNode.getContext('2d').drawImage(currentNode,0,0);
-          }
-          this.copyStyle(currentNode,newNode);
-        }else if(currentNode.nodeType == 3){
-          newNode = document.createTextNode(currentNode.nodeValue);
-        }
-        if(appendType === 'child'){
-          copyNode.appendChild(newNode);
-        } else if(appendType === 'sibling'){
-          copyNode.parentNode.appendChild(newNode);
-        }
-        copyNode = newNode;
-        if(node.firstChild()){
-          appendType = 'child';
-        } else {
-          while(!node.nextSibling()){
-            if(node.currentNode == node.root){
-              return copyRoot;
-            }
-            node.parentNode();
-            copyNode = copyNode.parentNode;
-          }
-          appendType = 'sibling';
-        }
-      }
-    }
   };
   Object.defineProperty(DataTransfer.prototype, 'dropEffect',{
     set: function(value){
@@ -181,7 +179,7 @@ var DragAndDrop = function(configObject){
     enumerable: true,
     configurable: false
   });
-  Object.defineProperty(DataTransfer.prototype, 'effectAlowed',{
+  Object.defineProperty(DataTransfer.prototype, 'effectAllowed',{
     set: function(value){
       if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
         pEffectAllowed = value;
@@ -210,11 +208,17 @@ var DragAndDrop = function(configObject){
     enumerable: true,
     configurable: false,
   });
-  Object.defineProperty(DataTransfer.prototype, "files",{
+  Object.defineProperty(DataTransfer.prototype, 'files',{
     get: function(){return [];},
     enumerable: true,
     configurable: false
   });
+  Object.defineProperty(DataTransfer.prototype, 'types',{
+    get types(){return pTypes.slice(0);},
+    enumerable: true,
+    configurable: false
+  });
+  Object.freeze(DataTransfer);
 };
 DragAndDrop.prototype.findElementNodes = function(node){
   var body = document.body;
@@ -287,7 +291,7 @@ DragAndDrop.prototype.dragStart = function(){
     var dataTransfer = this.newDataTransfer();
     dragStartEvent.dataTransfer = this.dataTransfer = dataTransfer;
     var dragStartCanceled = !dragNode.dispatchEvent(dragStartEvent);
-    if(typeof dataTransfer.dragImage.clone === 'undefined'){
+    if(typeof this.getDragImage().clone === 'undefined'){
       var rect = dragNode.getBoundingClientRect();
       var offsetY = clientY - rect.top;
       var offsetX = clientX - rect.left;
@@ -296,7 +300,7 @@ DragAndDrop.prototype.dragStart = function(){
     if(typeof this.dragEndElement === 'undefined'){
       this.dragEndElement = dragNode;
     }
-    dataTransfer.setDragImagePos(clientX,clientY);
+    this.setDragImagePos(clientX,clientY);
   }
 }
 DragAndDrop.prototype.touchEndCallback = function(e){
@@ -332,11 +336,11 @@ DragAndDrop.prototype.dragEnd = function(){
     if(this.config.cancelAnimation){
       this.cancelAnimation();
     } else {
-      var clone = this.dataTransfer.dragImage.clone;
+      var clone = this.getDragImage().clone;
       clone.parentElement.removeChild(clone);
     }
   } else {
-    document.body.removeChild(this.dataTransfer.dragImage.clone);
+    document.body.removeChild(this.getDragImage().clone);
   }
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
@@ -349,7 +353,7 @@ DragAndDrop.prototype.dragEnd = function(){
 }
 DragAndDrop.prototype.cancelAnimation = function(){
   // Animate dragImage back to starting point then remove it from DOM
-  var clone = this.dataTransfer.dragImage.clone;
+  var clone = this.getDragImage().clone;
   var style = clone.style;
   var rect = this.dragNode.getBoundingClientRect();
   var transform = 'translate(' + rect.left + 'px,' + rect.top + 'px)';
@@ -429,13 +433,14 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
     // hide drag image to locate element under it.
     // then reveal it before browser redraw
     // causes flickering on ipad, so off by default
+    var clone = this.getDragImage().clone;
     if(this.config.pointerEventsHack){
-      var display = this.dataTransfer.dragImage.clone.style.display;
-      this.dataTransfer.dragImage.clone.style.display = 'none';
+      var display = clone.style.display;
+      clone.style.display = 'none';
     }
     var element = document.elementFromPoint(moveData.clientX,moveData.clientY);
     if(this.config.pointerEventsHack){
-      this.dataTransfer.dragImage.clone.style.display = display;
+      clone.style.display = display;
     }
     this.dropElement = element;
     if(element !== null){
@@ -468,7 +473,7 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       newNodes[i].dispatchEvent(dragEnterEvent);
     }
     this.nodes = newNodes;
-    this.dataTransfer.setDragImagePos(moveData.clientX,moveData.clientY);
+    this.setDragImagePos(moveData.clientX,moveData.clientY);
   }
 }
 DragAndDrop.prototype.addTouchListeners = function(){

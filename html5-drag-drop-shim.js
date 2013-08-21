@@ -14,7 +14,7 @@ var DragAndDrop = function(configObject){
       }
     }
   }
-  var pEffectAllowed,effectAllowedMask,pDropEffect;
+  var pEffectAllowed,effectAllowedMask,pDropEffect,dataRead,dataWrite;
   var pTypes = [];
   var pData = {};
   var dragImage = {};
@@ -87,7 +87,8 @@ var DragAndDrop = function(configObject){
     for (var key in dragImage) delete dragImage[key];
     pTypes.length = 0;
     for (var key in pData) delete pData[key];
-  };
+    dataRead = dataWrite = true;
+  }.bind(this);
   this.setDragImagePos = function(clientX,clientY){
     var cloneOrigWidth = dragImage.cloneOrigRect.width;
     var X = clientX - dragImage.x;
@@ -108,6 +109,10 @@ var DragAndDrop = function(configObject){
     clone.style['transform'] = transform;
   };
   this.getDragImage = function(){return dragImage};
+  this.setDataRead = function(){dataRead = true;};
+  this.setDataWrite = function(){dataWrite = true;};
+  this.setDataReadWrite = function(){dataRead = dataWrite = true;};
+  this.setDataProtected = function(){dataRead = dataWrite = false;};
   this.resetDataTransfer();
   this.dragging = false;
   this.nodes = [];
@@ -128,12 +133,18 @@ var DragAndDrop = function(configObject){
       for (var key in pData) delete pData[key];
     },
     getData: function(type){
-      return pData[type.toLowerCase()];
+      if(dataRead){
+        return pData[type.toLowerCase()];
+      } else {
+        return undefined;
+      }
     },
     setData: function(type, value){
-      type = type.toLowerCase(); // supposed to be only ascii lowercase
-      pTypes.push(type);
-      pData[type] = value;
+      if(dataWrite){
+        type = type.toLowerCase(); // supposed to be only ascii lowercase
+        pTypes.push(type);
+        pData[type] = value;
+      }
     },
     setDragImage: function(image,x,y){
       console.log('setting drag image');
@@ -281,13 +292,15 @@ DragAndDrop.prototype.touchStartCallback = function(e){
 //  console.log('draggable_nodes count: ' + dcount);
   if(dcount){
     e.preventDefault();
-    var dragNode = dnodes[0];
-    this.dragNode = dragNode;
+    this.dragNode = dnodes[0];
     this.nodes = this.findElementNodes(target);
     this.dragInit = true;
+  }
 };
 DragAndDrop.prototype.dragStart = function(){
     this.dragging = true;
+    var dragNode = this.dragNode;
+    var moveData = this.moveData;
     var dragStartEvent = document.createEvent("Event");
     dragStartEvent.initEvent(this.config.eventPrefix + "dragstart", true, true);
     var dataTransfer = this.newDataTransfer();
@@ -295,22 +308,23 @@ DragAndDrop.prototype.dragStart = function(){
     var dragStartCanceled = !dragNode.dispatchEvent(dragStartEvent);
     if(typeof this.getDragImage().clone === 'undefined'){
       var rect = dragNode.getBoundingClientRect();
-      var offsetY = clientY - rect.top;
-      var offsetX = clientX - rect.left;
-      dataTransfer.setDragImage(dnodes[0],offsetX,offsetY);
+      var offsetY = moveData.clientY - rect.top;
+      var offsetX = moveData.clientX - rect.left;
+      dataTransfer.setDragImage(dragNode,offsetX,offsetY);
     }
     if(typeof this.dragEndElement === 'undefined'){
       this.dragEndElement = dragNode;
     }
-    this.setDragImagePos(clientX,clientY);
-  }
-}
+    this.setDragImagePos(this.clientX,this.clientY);
+    this.setDataProtected();
+  };
 DragAndDrop.prototype.touchEndCallback = function(e){
   this.dragInit = false;
   console.log("mouseup or touchend");
   if(this.dragging){
     var dropElement = this.dropElement;
     if(dropElement !== null && this.dragOverCanceled){
+      this.setDataRead();
       var dropEvent = document.createEvent("Event");
       dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
       dropEvent.dataTransfer = this.dataTransfer;
@@ -400,13 +414,9 @@ DragAndDrop.prototype.cancelAnimation = function(){
     transitionEndCallback, false);
 }
 DragAndDrop.prototype.touchMoveCallback = function(e){
-  if(this.dragInit){
-    this.dragStart();
-    this.dragInit = false;
-  }
-  if(this.dragging){
+  if(this.dragging || this.dragInit){
     console.log('dragging');
-    var moveData = {}
+    var moveData = {cancel: false};
     if(e.type == 'mousemove'){
       //console.log('mousemove');
       moveData.clientX = e.clientX;
@@ -415,13 +425,11 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       moveData.screenY = e.screenY;
     } else if(e.type == 'touchmove'){
       if(e.touches.length > 1){
-        return;
+        moveData.cancel = true;
       } else {
         //console.log('touchmove');
         if(this.touchIdentifier !== e.touches[0].identifier){
-          this.dropEffect = 'none';
-          this.dragEnd();
-          return;
+          moveData.cancel = true;
         }
         moveData.clientX = e.touches[0].clientX;
         moveData.clientY = e.touches[0].clientY;
@@ -430,6 +438,17 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       }
     }
     this.moveData = moveData;
+  }
+  if(this.dragInit){
+    this.dragStart();
+    this.dragInit = false;
+  }
+  if(this.dragging){
+    if(moveData.cancel){
+      this.dropEffect = 'none';
+      this.dragEnd();
+      return;
+    }
     // hack for browsers where pointer-events: none
     // does not apply to elementFromPoint
     // hide drag image to locate element under it.

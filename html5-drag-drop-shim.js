@@ -84,7 +84,9 @@ var DragAndDrop = function(configObject){
     pEffectAllowedMask = 7;
     pDropEffect = 'none';
     this.dragEndElement = undefined;
-    dragImage = {};
+    for (var key in dragImage) delete dragImage[key];
+    pTypes.length = 0;
+    for (var key in pData) delete pData[key];
   };
   this.setDragImagePos = function(clientX,clientY){
     var cloneOrigWidth = dragImage.cloneOrigRect.width;
@@ -214,7 +216,7 @@ var DragAndDrop = function(configObject){
     configurable: false
   });
   Object.defineProperty(DataTransfer.prototype, 'types',{
-    get types(){return pTypes.slice(0);},
+    get: function(){return pTypes.slice(0);},
     enumerable: true,
     configurable: false
   });

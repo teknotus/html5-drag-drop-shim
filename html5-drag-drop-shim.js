@@ -14,12 +14,19 @@ var DragAndDrop = function(configObject){
       }
     }
   }
+  var pEffectAllowed,effectAllowedMask,pDropEffect;
   var pTypes = [];
   var pData = {};
   var setDragEndElement = function(element){
     this.dragEndElement = element;
   }.bind(this);
-
+  this.resetDataTransfer = function(){
+    pEffectAllowed = 'uninitialized';
+    pEffectAllowedMask = 7;
+    pDropEffect = 'none';
+    this.dragEndElement = undefined;
+  };
+  this.resetDataTransfer();
   this.dragging = false;
   this.nodes = [];
   this.dataTransfer;
@@ -31,9 +38,6 @@ var DragAndDrop = function(configObject){
   };
   var DataTransfer = function(){
     this.dragImage = {};
-    this.effectAllowed = 'uninitialized';
-    this.effectAllowedMask = 7;
-    this.dropEffect = 'none';
   }
   DataTransfer.prototype = {
     setData: function(type, value){
@@ -94,55 +98,6 @@ var DragAndDrop = function(configObject){
       clone.style['-o-transform'] = transform;
       clone.style['transform'] = transform;
     },
-    set effectAllowed(value){
-      if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
-        this._effectAllowed = value;
-        if(value === 'none'){ //bitmask
-          this.effectAllowedMask = 0;
-        } else if(value === 'copy'){
-          this.effectAllowedMask = 1;
-        } else if(value === 'move'){
-          this.effectAllowedMask = 2;
-        } else if(value === 'link'){
-          this.effectAllowedMask = 4;
-        } else if(value === 'copyLink'){
-          this.effectAllowedMask = 5;
-        } else if(value === 'copyMove'){
-          this.effectAllowedMask = 3;
-        } else if(value === 'linkMove'){
-          this.effectAllowedMask = 6;
-        } else if(value === 'all'){
-          this.effectAllowedMask = 7;
-        }
-      } else {
-        this._effectAllowed = 'none';
-      }
-    },
-    get effectAllowed(){
-      return this._effectAllowed;
-    },
-    set dropEffect(value){
-      var effect = 0;
-      if(/copy|move|link|none/.test(value)){
-        if( value === 'copy' ){
-          effect = 1;
-        } else if(value === 'move'){
-          effect = 2;
-        } else if(value === 'link'){
-          effect = 4;
-        }
-        if(effect & this.effectAllowedMask){ //bitwise &
-          this._dropEffect = value;
-        } else {
-          this._dropEffect = 'none';
-        }
-      } else {
-        this._dropEffect = 'none';
-      }
-    },
-    get dropEffect(){
-      return this._dropEffect;
-    },
     copyStyle: function(original,copy){
       var originalStyle = window.getComputedStyle(original);
       var bodyStyle = window.getComputedStyle(document.body);
@@ -202,10 +157,63 @@ var DragAndDrop = function(configObject){
       }
     }
   };
+  Object.defineProperty(DataTransfer.prototype, 'dropEffect',{
+    set: function(value){
+      var effect = 0;
+      if(/copy|move|link|none/.test(value)){
+        if( value === 'copy' ){
+          effect = 1;
+        } else if(value === 'move'){
+          effect = 2;
+        } else if(value === 'link'){
+          effect = 4;
+        }
+        if(effect & effectAllowedMask){ //bitwise &
+          pDropEffect = value;
+        } else {
+          pDropEffect = 'none';
+        }
+      } else {
+        pDropEffect = 'none';
+      }
+    },
+    get: function(){return pDropEffect;},
+    enumerable: true,
+    configurable: false
+  });
+  Object.defineProperty(DataTransfer.prototype, 'effectAlowed',{
+    set: function(value){
+      if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
+        pEffectAllowed = value;
+        if(value === 'none'){ //bitmask
+          effectAllowedMask = 0;
+        } else if(value === 'copy'){
+          effectAllowedMask = 1;
+        } else if(value === 'move'){
+          effectAllowedMask = 2;
+        } else if(value === 'link'){
+          effectAllowedMask = 4;
+        } else if(value === 'copyLink'){
+          effectAllowedMask = 5;
+        } else if(value === 'copyMove'){
+          effectAllowedMask = 3;
+        } else if(value === 'linkMove'){
+          effectAllowedMask = 6;
+        } else if(value === 'all'){
+          effectAllowedMask = 7;
+        }
+      } else {
+        pEffectAllowed = 'none';
+      }
+    },
+    get: function(){return pEffectAllowed;},
+    enumerable: true,
+    configurable: false,
+  });
   Object.defineProperty(DataTransfer.prototype, "files",{
-      get: function(){return [];},
-      enumerable: true,
-      configurable: false
+    get: function(){return [];},
+    enumerable: true,
+    configurable: false
   });
 };
 DragAndDrop.prototype.findElementNodes = function(node){
@@ -336,7 +344,8 @@ DragAndDrop.prototype.dragEnd = function(){
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
   this.dragEndElement.dispatchEvent(dragEndEvent);
-  this.dragEndElement = undefined;
+  //cleanup
+  this.resetDataTransfer();
 }
 DragAndDrop.prototype.cancelAnimation = function(){
   // Animate dragImage back to starting point then remove it from DOM

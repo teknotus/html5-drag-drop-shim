@@ -160,7 +160,7 @@ var DragAndDrop = function(configObject){
   Object.defineProperty(DataTransfer.prototype, 'dropEffect',{
     set: function(value){
       var effect = 0;
-      if(/copy|move|link|none/.test(value)){
+      if(/^(copy|move|link|none)$/.test(value)){
         if( value === 'copy' ){
           effect = 1;
         } else if(value === 'move'){
@@ -183,7 +183,7 @@ var DragAndDrop = function(configObject){
   });
   Object.defineProperty(DataTransfer.prototype, 'effectAllowed',{
     set: function(value){
-      if(/copy|move|link|copyLink|copyMove|linkMove|all|none/.test(value)){
+      if(/^(copy|move|link|copyLink|copyMove|linkMove|all|none)$/.test(value)){
         pEffectAllowed = value;
         if(value === 'none'){ //bitmask
           effectAllowedMask = 0;

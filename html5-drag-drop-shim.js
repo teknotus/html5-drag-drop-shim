@@ -148,9 +148,14 @@ var DragAndDrop = function(configObject){
     addElement: function(element){
       setDragEndElement(element);
     },
-    clearData: function(){
-      pTypes.length = 0;
-      for (var key in pData) delete pData[key];
+    clearData: function(type){
+      if(dataWrite && (typeof(type) !== 'undefined')){
+        pTypes.splice(pTypes.indexOf(type),1);
+        delete pData[type];
+      } else if(dataWrite) {
+        pTypes.length = 0;
+        for (var key in pData) delete pData[key];
+      }
     },
     getData: function(type){
       if(dataRead){

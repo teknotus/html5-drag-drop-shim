@@ -256,23 +256,14 @@ DragAndDrop.prototype.findElementNodes = function(node){
   return nodes.reverse();
 };
 DragAndDrop.prototype.findDraggableNodes = function(node){
-  // could do this with xpath
-  // './/ancestor-or-self::*[@draggable="true"]'
   var draggable = this.config.draggableAttribute;
-  var body = document.body;
-  var draggable_nodes = [];
-  while(node != body) {
-    if(node.hasAttribute(draggable)){
-      var draggable_value = node.attributes[draggable].value;
-      if(draggable_value == true
-        || draggable_value == 'true'
-        || draggable_value == ""){
-          draggable_nodes.push(node);
-      }
-    }
-    node = node.parentNode;
-    }
-    return draggable_nodes;
+  var xSelector = './/ancestor-or-self::*[@' + draggable + '="true" or @'
+    + draggable + '=""]';
+  var dn = document.evaluate(xSelector,node, null, XPathResult.ANY_TYPE, null);
+  var cn,draggable_nodes = [];
+  while(cn = dn.iterateNext())
+    draggable_nodes.push(cn);
+  return draggable_nodes;
 };
 DragAndDrop.prototype.findDropzoneNode = function(node){
   var dropzone = this.config.dropzoneAttribute;

@@ -1,7 +1,8 @@
 var DragAndDrop = function(configObject){
   // set defaults
   this.config = {
-    dragAttribute: 'draggable',
+    draggableAttribute: 'draggable',
+    dropzoneAttribute: 'dropzone',
     eventPrefix: '',
     pointerEventsHack: false,
     cancelAnimation: true,
@@ -79,6 +80,24 @@ var DragAndDrop = function(configObject){
       }
     }
   }
+  var pAllowedOperation = function(value){
+    var effect = 0;
+    if(/^(copy|move|link|none)$/.test(value)){
+      if( value === 'copy' ){
+        effect = 1;
+      } else if(value === 'move'){
+        effect = 2;
+      } else if(value === 'link'){
+        effect = 4;
+      }
+      return effect & effectAllowedMask; //bitwise &
+    } else {
+      return false;
+    }
+  };
+  this.allowedOperation = function(value){
+    return pAllowedOperation(value);
+  }
   this.resetDataTransfer = function(){
     pEffectAllowed = 'uninitialized';
     pEffectAllowedMask = 7;
@@ -118,6 +137,7 @@ var DragAndDrop = function(configObject){
   this.nodes = [];
   this.dataTransfer;
   this.dragOverCanceled;
+  this.validDropTarget;
   this.touchIdentifier;
   this.dragInit = false;
   this.newDataTransfer = function(){
@@ -170,20 +190,8 @@ var DragAndDrop = function(configObject){
   };
   Object.defineProperty(DataTransfer.prototype, 'dropEffect',{
     set: function(value){
-      var effect = 0;
-      if(/^(copy|move|link|none)$/.test(value)){
-        if( value === 'copy' ){
-          effect = 1;
-        } else if(value === 'move'){
-          effect = 2;
-        } else if(value === 'link'){
-          effect = 4;
-        }
-        if(effect & effectAllowedMask){ //bitwise &
-          pDropEffect = value;
-        } else {
-          pDropEffect = 'none';
-        }
+      if(pAllowedOperation(value)){
+        pDropEffect = value;
       } else {
         pDropEffect = 'none';
       }
@@ -250,7 +258,7 @@ DragAndDrop.prototype.findElementNodes = function(node){
 DragAndDrop.prototype.findDraggableNodes = function(node){
   // could do this with xpath
   // './/ancestor-or-self::*[@draggable="true"]'
-  var draggable = this.config.dragAttribute;
+  var draggable = this.config.draggableAttribute;
   var body = document.body;
   var draggable_nodes = [];
   while(node != body) {
@@ -265,6 +273,31 @@ DragAndDrop.prototype.findDraggableNodes = function(node){
     node = node.parentNode;
     }
     return draggable_nodes;
+};
+DragAndDrop.prototype.findDropzoneNode = function(node){
+  var dropzone = this.config.dropzoneAttribute;
+  var xSelector = './/ancestor-or-self::*[@' + dropzone + ']';
+  var dz = document.evaluate(xSelector,node, null, XPathResult.ANY_TYPE, null);
+  var dzNode;
+  var types = this.dataTransfer.types;
+  while(dzNode = dz.iterateNext()){
+    var value = dzNode.getAttribute(dropzone);
+    var parts = value.toLowerCase().split(/\s/);
+    var operation = parts[0];
+    if(this.allowedOperation(operation)){
+      for(var l = parts.length, i = 1 ; i < l ; i++){
+        var kindType = parts[i].split(':');
+        var kind = kindType[0];
+        var type = kindType[1];
+        if(kind === 'string' && (types.indexOf(type) > -1)){
+          this.dataTransfer.dropEffect = operation;
+          return dzNode;
+        } else if(kind === 'file'){
+          console.log('dropzone file support unimplemented');
+        }
+      }
+    }
+  }
 };
 DragAndDrop.prototype.touchStartCallback = function(e){
   if(this.dragging){
@@ -323,7 +356,7 @@ DragAndDrop.prototype.touchEndCallback = function(e){
   console.log("mouseup or touchend");
   if(this.dragging){
     var dropElement = this.dropElement;
-    if(dropElement !== null && this.dragOverCanceled){
+    if(dropElement !== null && this.validDropTarget){
       this.setDataRead();
       var dropEvent = document.createEvent("Event");
       dropEvent.initEvent(this.config.eventPrefix + "drop", true, true);
@@ -468,7 +501,15 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       var dragOverEvent = document.createEvent("Event");
       dragOverEvent.initEvent(this.config.eventPrefix + "dragover", true, true);
       dragOverEvent.dataTransfer = this.dataTransfer;
-      this.dragOverCanceled = !element.dispatchEvent(dragOverEvent);
+      this.validDropTarget = this.dragOverCanceled =
+        !element.dispatchEvent(dragOverEvent);
+      if(!this.dragOverCanceled){
+        var dropzone = this.findDropzoneNode(element);
+        if(dropzone){
+          this.dropElement = dropzone;
+          this.validDropTarget = true;
+        }
+      }
     }
     var oldNodes = this.nodes;
     var newNodes;
@@ -520,7 +561,8 @@ DragAndDrop.prototype.addListeners = function(){
 
 console.log("adding drag drop event listeners");
 var dnd_config = {
-  dragAttribute: 'dragger',
+  draggableAttribute: 'dragger',
+  dropzoneAttribute: 'dropzone',
   pointerEventsHack: false,
 };
 var dnd = new DragAndDrop(dnd_config);

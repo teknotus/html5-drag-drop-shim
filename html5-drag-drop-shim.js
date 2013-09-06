@@ -563,3 +563,10 @@ var dnd_config = {
 };
 var dnd = new DragAndDrop(dnd_config);
 dnd.addListeners();
+//   function dropzoneTest(e, element) { console.log('dropzone: '
+//     + e.dataTransfer.getData('application/json'));}
+//   function dragover(e){e.stopPropagation();e.preventDefault();e.dataTransfer.effectAllowed='none';return false;}
+//setTimeout(function(){
+//document.getElementById('dztest1').addEventListener('dragstart', dragover,true);
+//document.getElementById('dztest2').addEventListener('drop', dropzoneTest, false);
+//}, 10000);

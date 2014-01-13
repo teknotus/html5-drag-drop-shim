@@ -31,9 +31,9 @@ var DragAndDrop = function(configObject){
       if(originalStyle[key] != bodyStyle[key] || key == 'outline'){
         // only copy styles not inherited from the body
         copy.style[key] = originalStyle[key];
-        copy.style['pointer-events'] = 'none';
       }
-    };
+    }
+    copy.style['pointer-events'] = 'none';
   };
   var cloneWithStyle = function(nodeOrig){
     var copyRoot = document.createElement('div');
@@ -246,6 +246,91 @@ var DragAndDrop = function(configObject){
   });
   Object.freeze(DataTransfer);
 };
+DragAndDrop.prototype.createSvgDocument = function(){
+  var docType = document.implementation.createDocumentType('svg',
+    '-//W3C//DTD SVG 1.1//EN',
+    'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd');
+  var svgDoc = document.implementation.createDocument(
+    'http://www.w3.org/2000/svg', 'svg', docType);
+  return svgDoc;
+}
+DragAndDrop.prototype.createSvgDataUrl = function(node){
+  var xSerializer = new XMLSerializer();
+  var svgString = xSerializer.serializeToString(node);
+  var svgBlob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
+  var dataUrl = self.URL.createObjectURL(svgBlob);
+  return dataUrl;
+}
+DragAndDrop.prototype.cloneWithStyle = function(nodeOrig){
+  var copyStyle = function(original,copy){
+    var originalStyle = window.getComputedStyle(original);
+    var bodyStyle = window.getComputedStyle(document.body);
+    var key;
+    for(var l = originalStyle.length,i = 0; i < l ; i++){
+      key = originalStyle[i];
+      copy.style[key] = originalStyle[key];
+    }
+    copy.style['pointer-events'] = 'none';
+  };
+  var copyRoot = document.createElement('div');
+  var treeWalker = document.createTreeWalker(
+    nodeOrig, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+  var node = treeWalker;
+  var currentNode,newNode;
+  var copyNode = copyRoot;
+  var appendType = 'child';
+  var explode = 5000;
+  while(explode > 0){
+    explode--;
+    currentNode = treeWalker.currentNode;
+    if(currentNode.nodeType == 1){
+      newNode = document.createElement(currentNode.nodeName);
+      if(currentNode.nodeName === 'CANVAS'){
+        newNode.width = currentNode.width;
+        newNode.height = currentNode.height;
+        newNode.getContext('2d').drawImage(currentNode,0,0);
+      }
+      copyStyle(currentNode,newNode);
+    }else if(currentNode.nodeType == 3){
+      newNode = document.createTextNode(currentNode.nodeValue);
+    }
+    if(appendType === 'child'){
+      copyNode.appendChild(newNode);
+    } else if(appendType === 'sibling'){
+      copyNode.parentNode.appendChild(newNode);
+    }
+    copyNode = newNode;
+    if(node.firstChild()){
+      appendType = 'child';
+    } else {
+      while(!node.nextSibling()){
+        if(node.currentNode == node.root){
+          return copyRoot;
+        }
+        node.parentNode();
+        copyNode = copyNode.parentNode;
+      }
+      appendType = 'sibling';
+    }
+  }
+};
+DragAndDrop.prototype.createImageFromElement = function(el){
+  var svgimg = DragAndDrop.prototype.createSvgDocument();
+  var clone = DragAndDrop.prototype.cloneWithStyle(el);
+  var foreignOb = svgimg.createElement("foreignObject");
+  foreignOb.appendChild(clone);
+  svgimg.documentElement.appendChild(foreignOb);
+  var rect = el.getBoundingClientRect();
+  svgimg.documentElement.width = rect.width;
+  svgimg.documentElement.height = rect.height;
+  svgimg.documentElement.viewBox = "0 0 " + rect.width + " " + rect.height;
+  var svgurl = this.createSvgDataUrl(svgimg);
+  var imgclone = document.createElement('img');
+  imgclone.src = svgurl;
+  imgclone.width = rect.width;
+  imgclone.height = rect.height;
+  return imgclone;
+}
 DragAndDrop.prototype.findElementNodes = function(node){
   var body = document.body;
   var nodes = [];
@@ -359,6 +444,8 @@ DragAndDrop.prototype.touchEndCallback = function(e){
       dropEvent.dataTransfer = this.dataTransfer;
       dropEvent.clientX = this.moveData.clientX;
       dropEvent.clientY = this.moveData.clientY;
+      dropEvent.screenX = this.moveData.screenX;
+      dropEvent.screenY = this.moveData.screenY;
       dropElement.dispatchEvent(dropEvent);
     } else {
       console.log('invalid drop target');
@@ -390,6 +477,8 @@ DragAndDrop.prototype.dragEnd = function(){
   var dragEndEvent = document.createEvent("Event");
   dragEndEvent.initEvent(this.config.eventPrefix + "dragend", true, true);
   dragEndEvent.dataTransfer = this.dataTransfer;
+  dragEndEvent.clientX = this.moveData.clientX;
+  dragEndEvent.clientY = this.moveData.clientY;
   dragEndEvent.screenX = this.moveData.screenX;
   dragEndEvent.screenY = this.moveData.screenY;
   this.dragEndElement.dispatchEvent(dragEndEvent);
@@ -444,7 +533,7 @@ DragAndDrop.prototype.cancelAnimation = function(){
 }
 DragAndDrop.prototype.touchMoveCallback = function(e){
   if(this.dragging || this.dragInit){
-    console.log('dragging');
+    //console.log('dragging');
     var moveData = {cancel: false};
     if(e.type == 'mousemove'){
       //console.log('mousemove');
@@ -497,6 +586,10 @@ DragAndDrop.prototype.touchMoveCallback = function(e){
       var dragOverEvent = document.createEvent("Event");
       dragOverEvent.initEvent(this.config.eventPrefix + "dragover", true, true);
       dragOverEvent.dataTransfer = this.dataTransfer;
+      dragOverEvent.clientX = this.moveData.clientX;
+      dragOverEvent.clientY = this.moveData.clientY;
+      dragOverEvent.screenX = this.moveData.screenX;
+      dragOverEvent.screenY = this.moveData.screenY;
       this.validDropTarget = this.dragOverCanceled =
         !element.dispatchEvent(dragOverEvent);
       if(!this.dragOverCanceled){
